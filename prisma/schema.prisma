@@ -1,0 +1,35 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+    provider = "prisma-client.js"
+}
+
+model Author {
+    id Int @id @default(autoincrement())
+    username String
+    nickname String @unique
+    email String
+    posts Post[]
+}
+
+model Post {
+    id Int @id @default(autoincrement())
+    title String //VARCHAR 255
+    content String @db.Text // TEXT will be used to store html
+    published Boolean @default(false)
+    author Author @relation(fields: [authorId], references: [id])
+    authorId Int
+    createdAt DateTime @default(now())
+    images PostImage[]
+}
+
+model PostImage {
+    id Int @id @default(autoincrement())
+    post Post @relation(fields: [postId], references: [id])
+    postId Int
+    imageUrl String?
+    imageData Bytes? @db.ByteA
+}
