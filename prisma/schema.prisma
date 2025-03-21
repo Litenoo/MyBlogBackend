@@ -9,7 +9,6 @@ generator client {
 
 model Author {
     id Int @id @default(autoincrement())
-    username String
     nickname String @unique
     email String
     posts Post[]
@@ -23,13 +22,4 @@ model Post {
     author Author @relation(fields: [authorId], references: [id])
     authorId Int
     createdAt DateTime @default(now())
-    images PostImage[]
-}
-
-model PostImage {
-    id Int @id @default(autoincrement())
-    post Post @relation(fields: [postId], references: [id])
-    postId Int
-    imageUrl String?
-    imageData Bytes? @db.ByteA
 }

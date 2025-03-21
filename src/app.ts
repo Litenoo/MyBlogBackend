@@ -1,5 +1,7 @@
-export default class App{
-    constructor(){
-        
+import { PrismaClient } from "@prisma/client"
+
+export default class App {
+    constructor() {
+
     }
 }
