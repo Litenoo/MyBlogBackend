@@ -1,4 +1,7 @@
 {
+  "name": "myblogbackend",
+  "version": "1.0.0",
+  "license": "MIT",
   "dependencies": {
     "@prisma/client": "^6.5.0",
     "@types/validator": "^13.12.2",
