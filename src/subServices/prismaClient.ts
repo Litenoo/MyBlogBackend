@@ -5,7 +5,7 @@ import validator from "validator";
 // outer files
 import logger from "../logger";
 
-export default class DBClient {
+export default class Client {
     protected prisma = new PrismaClient();
 
     async addAuthor(nickname: string, email: string) {
