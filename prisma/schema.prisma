@@ -1,25 +1,33 @@
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+    provider = "postgresql"
+    url      = env("DATABASE_URL")
 }
 
 generator client {
-    provider = "prisma-client.js"
+    provider = "prisma-client-js"
 }
 
 model Author {
-    id Int @id @default(autoincrement())
+    id       Int    @id @default(autoincrement())
     nickname String @unique
-    email String
-    posts Post[]
+    email    String @unique
+    posts    Post[]
 }
 
 model Post {
-    id Int @id @default(autoincrement())
-    title String //VARCHAR 255
-    content String @db.Text // TEXT will be used to store html
-    published Boolean @default(false)
-    author Author @relation(fields: [authorId], references: [id])
-    authorId Int
+    id        Int       @id @default(autoincrement())
+    title     String //VARCHAR 255
+    content   String    @db.Text // TEXT - expects Markdown
+    tags      PostTag[]
+    published Boolean   @default(false)
+    author    Author    @relation(fields: [authorId], references: [id])
+    authorId  Int
+    createdAt DateTime  @default(now())
+}
+
+model PostTag {
+    id        Int      @id @default(autoincrement())
+    tag      String
+    post      Post     @relation(fields: [id], references: [id])
     createdAt DateTime @default(now())
 }
