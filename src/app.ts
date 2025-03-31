@@ -1,10 +1,13 @@
-import { PrismaClient } from "@prisma/client";
-import { HttpClient } from "./subServices/httpClient";
+import PrsmClient from "./subServices/prismaClient";
+import HttpClient from "./subServices/httpClient";
 
 export default class App {
-    protected prismaClient = new PrismaClient();
-    protected httpClient = new axios
+    protected prismaClient: PrsmClient | null = null;
+    protected httpClient: HttpClient | null = null;
     constructor() {
-
+        this.prismaClient = new PrsmClient();
+        if (this.prismaClient) {
+            this.httpClient = new HttpClient(this.prismaClient);
+        }
     }
 }
