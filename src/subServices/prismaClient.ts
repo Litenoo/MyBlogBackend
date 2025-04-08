@@ -40,17 +40,24 @@ export default class Client {
         }
     }
 
-    async addPost(title: string, content: string, published: boolean, authorId: number) {
+    async addPost(title: string, content: string, published: boolean, authorId: number): Promise<{ success: boolean, message?: string }> {
         try {
             // Validation
             if (!title || !content || !published || !authorId) {
-                logger.error(new Error(`Missing variables (title, content, published, authorId)`).stack);
-                return;
+                const errorMsg = `Missing variables (title, content, published, authorId)`;
+                logger.error(new Error(errorMsg).stack);
+                return { success: false, message: errorMsg };
             }
 
             if (!validator.isLength(title, { min: 2, max: 128 })) {
-                logger.error(new Error(`Title is to long (max 128 characters)`).stack);
-                return;
+                const errorMsg = `Title is to long (max 128 characters)`;
+                logger.error(new Error(errorMsg).stack);
+                return { success: false, message: errorMsg };
+            }
+
+            const authorExists = await this.IfAuthorExists(authorId)
+            if (!authorExists) {
+                return { success: false, message: `Author does not exist` };
             }
 
             // Database query
@@ -59,12 +66,22 @@ export default class Client {
                     title, // Title of post
                     content, // Markdown content of post
                     published, // Could be visible for users
-                    authorId, // Id of the author of post
+                    authorId, // Id of the author of post 
                 }
             });
+            return { success: true };
         } catch (err) {
             logger.error((err as Error).stack);
+            return { success: false, message: `Unexpected error occured. Please check logs or contact administrator` };
         }
+    }
+
+    async IfAuthorExists(id: number): Promise<boolean> {
+        const author = await this.prisma.author.findUnique({
+            where: { id }
+        });
+
+        return author ? true : false;
     }
 
     async getPostById(postId: number) {
@@ -74,11 +91,7 @@ export default class Client {
             }
         });
 
-        if (post) {
-            return post;
-        } else {
-            return null;
-        }
+        return post ? post : null;
     }
 
     async getCardsByTag(tags: string[]) {
