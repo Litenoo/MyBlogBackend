@@ -20,7 +20,7 @@ export default class HttpClient {
             res.json({ message: "Pong!" });
         });
 
-        this.api.get("/api/addPost", async (req, res) => {
+        this.api.post("/api/addPost", async (req, res) => {
             const payload: PostInput = req.body;
             const result = await prismaClient.addPost(payload.title, payload.content, payload.published, payload.authorId); //authenticate author later if needed
 

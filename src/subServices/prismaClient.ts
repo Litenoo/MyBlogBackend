@@ -40,7 +40,11 @@ export default class Client {
         }
     }
 
-    async addPost(title: string, content: string, published: boolean, authorId: number): Promise<{ success: boolean, message?: string }> {
+    async addPost(title: string | undefined,
+        content: string | undefined,
+        published: boolean = false,
+        authorId: number | undefined
+    ): Promise<{ success: boolean, message?: string }> {
         try {
             // Validation
             if (!title || !content || !published || !authorId) {
