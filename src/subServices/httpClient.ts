@@ -1,7 +1,7 @@
 import express from "express";
 import PrsmClient from "./prismaClient";
 
-const PORT = 3001; // DEV
+const PORT = 3000; // DEV
 
 export default class HttpClient {
     protected api;
