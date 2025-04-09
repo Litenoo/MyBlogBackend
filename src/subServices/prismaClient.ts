@@ -10,22 +10,20 @@ export default class Client {
         return this.prisma;
     }
 
-    async addAuthor(nickname: string, email: string) {
+    async addAuthor(nickname: string, email: string): Promise<{ success: Boolean, message?: string }> {
         try {
             // Validation
             if (!nickname || !email) {
-                logger.error(new Error(`Missing param in (username, email)`).stack);
-                return;
+                logger.error(new Error(`Passed params are undefined`).stack);
+                return { success: false, message: "Missing required variables" };
             }
 
             if (!validator.isEmail(email)) {
-                logger.error(new Error(`The email format is not valid`).stack);
-                return;
+                return { success: false, message: "The email is not valid" };
             }
 
             if (!validator.isLength(nickname, { min: 2, max: 32 })) {
-                logger.error(new Error(`The nickname lenght could be 2 > and < 32`).stack);
-                return;
+                return { success: false, message: "The nickname lenght could be 2 > and < 32" };
             }
 
             // Database query
@@ -35,37 +33,38 @@ export default class Client {
                     email, // Email of the author
                 }
             });
+
+            return { success: true, message: "Author registered successfully" }
         } catch (err) {
             logger.error((err as Error).stack);
+            return { success: false, message: "Unexpected error occured" }
         }
     }
 
-    async addPost(title: string | undefined,
-        content: string | undefined,
-        published: boolean = false,
-        authorId: number | undefined
-    ): Promise<{ success: boolean, message?: string }> {
+    async addPost(title: string, content: string, published: boolean = false, authorId: number): Promise<{ success: boolean, message?: string, postId?: number }> {
         try {
-            // Validation
+            // Check if variables passed
             if (!title || !content || !published || !authorId) {
-                const errorMsg = `Missing variables (title, content, published, authorId)`;
+                const errorMsg = `Missing required variables`;
                 logger.error(new Error(errorMsg).stack);
                 return { success: false, message: errorMsg };
             }
 
+            // Check if title length is enough
             if (!validator.isLength(title, { min: 2, max: 128 })) {
-                const errorMsg = `Title is to long (max 128 characters)`;
+                const errorMsg = `Title must be between 2 and 128 characters`;
                 logger.error(new Error(errorMsg).stack);
                 return { success: false, message: errorMsg };
             }
 
-            const authorExists = await this.IfAuthorExists(authorId)
-            if (!authorExists) {
-                return { success: false, message: `Author does not exist` };
-            }
+            //Check if author exist
+            const author = await this.prisma.author.findUnique({
+                where: { id: authorId },
+            });
+            if (!author) { return { success: false, message: "Author not found" } };
 
             // Database query
-            await this.prisma.post.create({
+            const post = await this.prisma.post.create({
                 data: {
                     title, // Title of post
                     content, // Markdown content of post
@@ -73,19 +72,11 @@ export default class Client {
                     authorId, // Id of the author of post 
                 }
             });
-            return { success: true };
+            return { success: true, postId: post.id };
         } catch (err) {
             logger.error((err as Error).stack);
-            return { success: false, message: `Unexpected error occured. Please check logs or contact administrator` };
+            return { success: false, message: `Unexpected error occured` };
         }
-    }
-
-    async IfAuthorExists(id: number): Promise<boolean> {
-        const author = await this.prisma.author.findUnique({
-            where: { id }
-        });
-
-        return author ? true : false;
     }
 
     async getPostById(postId: number) {
