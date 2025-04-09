@@ -26,6 +26,7 @@ export default class HttpClient {
         this.api.post("/api/addPost", async (req, res) => {
             try {
                 const payload: PostInput = req.body;
+                console.log(`Payload : ${payload}`);
                 const result = await prismaClient.addPost(payload.title, payload.content, payload.published, payload.authorId); //authenticate author later if needed
 
                 if (!result.success) {
@@ -44,9 +45,10 @@ export default class HttpClient {
             }
         });
 
-        this.api.post("api/addAuthor", async (req, res) => {
+        this.api.post("/api/addAuthor", async (req, res) => {
             try {
                 const payload: AuthorInput = req.body;
+                console.log(`Payload : ${payload}`);
                 const result = await prismaClient.addAuthor(payload.nickname, payload.email);
 
                 if (!result.success) {
