@@ -69,7 +69,7 @@ export default class Client {
                     title, // Title of post
                     content, // Markdown content of post
                     published, // Could be visible for users
-                    authorId, // Id of the author of post 
+                    authorId: Number(authorId), // Id of the author of post 
                 }
             });
             return { success: true, postId: post.id };

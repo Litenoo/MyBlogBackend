@@ -15,4 +15,4 @@ COPY . .
 
 EXPOSE 3001
 
-CMD ["yarn", "dev"]
+CMD ["yarn", "prisma", "migrate" ,"deploy", "&&", "yarn", "dev"]

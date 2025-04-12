@@ -1,6 +1,6 @@
 datasource db {
     provider = "postgresql"
-    url      = "postgresql://auto:password@localhost:5432/blog_app" //DEV
+    url      = env("DATABASE_URL")   // This will try to read the env variable
 }
 
 generator client {
