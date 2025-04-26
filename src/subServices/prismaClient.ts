@@ -1,7 +1,25 @@
 import { PrismaClient, Prisma } from "@prisma/client";
+import type { Post, Author } from "@prisma/client"
 import * as valid from "./prismaClient.schema";
 
 import logger from "../logger";
+
+interface Response<T> {
+    success: boolean,
+    message?: string,
+    payload?: T,
+}
+
+// Type for card of post (For example searchbar results : only title and important things)
+type PostCard = Prisma.PostGetPayload<{
+    select: {
+        id: true,
+        title: true,
+        createdAt: true,
+        author: { select: { nickname: true } }  // Only author's nickname
+        tags: { select: { tag: true } }         // Only tag name
+    }
+}>;
 
 export default class Client {
     protected prisma = new PrismaClient();
@@ -11,7 +29,7 @@ export default class Client {
     }
 
     async addAuthor(params: { nickname: string, email: string })
-        : Promise<{ success: Boolean, message?: string }> {
+        : Promise<Response<undefined>> {
         // sync validation
         const validation = valid.userCreateSchema.safeParse(params);
         if (!validation.success) {
@@ -63,7 +81,7 @@ export default class Client {
     }
 
     async addPost(params: { title: string, content: string, published: boolean, authorId: number })
-        : Promise<{ success: boolean, message?: string, postId?: number }> {
+        : Promise<Response<{ postId: number }>> {
         // Sync validation        
         const validation = valid.postUploadSchema.safeParse(params);
         if (!validation.success) {
@@ -76,30 +94,63 @@ export default class Client {
                 data: validation.data,
             });
 
-            return { success: true, postId: post.id };
+            return { success: true, payload: { postId: post.id } };
         } catch (err) {
             logger.error((err as Error).stack);
 
             const prismaError = err as Prisma.PrismaClientKnownRequestError;
-            if (prismaError.code === 'P2003') { // Foreign key does not exists
+            if (prismaError.code === "P2003") { // Foreign key does not exists, the only Foreign key is author
                 return { success: false, message: "Author does not exist" };
             }
 
-            return { success: false, message: `Unexpected error occured` };
+            return { success: false, message: "Unexpected error occured" };
         }
     }
 
+    async getPostById(params: { postId: number })
+        : Promise<Response<Post | null>> {
+        try {
+            const payload = await this.prisma.post.findUnique({
+                where: {
+                    id: params.postId,
+                }
+            });
+
+            return { success: true, payload: payload }
+        } catch (err) {
+            logger.error((err as Error).stack);
+            return { success: false, message: "Unexpected error occured" };
+        }
+    }
+
+    async getPostsTitleCards(params: { quantity: number, requirements: {} }) {
+        // Sync validation
+        const validation = valid.postsTitleCardsSchema.safeParse(params);
+        if (!validation.success) {
+            return { success: false, message: validation.error.errors[0]?.message }
+        }
+
+        try {
+            // Request
+            const postCards: PostCard[] = await this.prisma.post.findMany({
+                select: {
+                    id: true,
+                    title: true,
+                    author: { select: { nickname: true } },
+                    tags: { select: { tag: true } },
+                    createdAt: true,
+                },
+                where: { published: true },
+                orderBy: { createdAt: 'desc' },
+            });
+            return { success: true, payload: postCards }
+        } catch (err) {
+            logger.error((err as Error).stack);
+            return { success: false, message: "Unexpected error occured" }
+        }
+    }
 
     // REFACTOR THOSE
-    // async getPostById(postId: number) {
-    //     const post = await this.prisma.post.findUnique({
-    //         where: {
-    //             id: postId,
-    //         }
-    //     });
-
-    //     return post ? post : null;
-    // }
 
     // async getCardsByTag(tags: string[]) {
     //     return this.prisma.post.findMany({

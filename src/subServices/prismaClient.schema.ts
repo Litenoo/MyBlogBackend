@@ -27,3 +27,10 @@ export const postUploadSchema = z.object({
         .int("Invalid author id")
         .positive("Invalid author id")
 }).strict();
+
+export const postsTitleCardsSchema = z.object({
+    quantity: z.number()
+        .int("Invalid quantity of post cards")
+        .positive("Invalid quantity of post cards")
+        .max(100, "Maximum quantity of posts to load is 100"),
+}).strict();
