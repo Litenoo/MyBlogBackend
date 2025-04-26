@@ -7,21 +7,12 @@ generator client {
     provider = "prisma-client-js"
 }
 
-model Author {
-    id       Int    @id @default(autoincrement())
-    nickname String @unique
-    email    String @unique
-    posts    Post[]
-}
-
 model Post {
     id        Int       @id @default(autoincrement())
     title     String //VARCHAR 255
     content   String    @db.Text // TEXT - expects Markdown
     tags      PostTag[]
     published Boolean   @default(false)
-    author    Author    @relation(fields: [authorId], references: [id])
-    authorId  Int
     createdAt DateTime  @default(now())
 }
 

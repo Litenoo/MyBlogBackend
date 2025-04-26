@@ -1,5 +1,5 @@
 import express from "express";
-import PrsmClient from "./prismaClient";
+import PrsmClient from "./dbClitent";
 import { Post, Author } from "@prisma/client";
 import logger from "../logger";
 
@@ -62,7 +62,7 @@ export default class HttpClient {
             try {
                 const payload: AuthorInput = req.body;
 
-                const result = await this.prismaClient.addAuthor({
+                const result = await this.prismaClient.createAuthor({
                     nickname: payload.nickname,
                     email: payload.email
                 });

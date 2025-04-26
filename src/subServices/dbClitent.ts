@@ -1,5 +1,5 @@
 import { PrismaClient, Prisma } from "@prisma/client";
-import type { Post, Author } from "@prisma/client"
+import type { Post } from "@prisma/client"
 import * as valid from "./prismaClient.schema";
 
 import logger from "../logger";
@@ -16,7 +16,6 @@ type PostCard = Prisma.PostGetPayload<{
         id: true,
         title: true,
         createdAt: true,
-        author: { select: { nickname: true } }  // Only author's nickname
         tags: { select: { tag: true } }         // Only tag name
     }
 }>;
@@ -28,59 +27,7 @@ export default class Client {
         return this.prisma;
     }
 
-    async addAuthor(params: { nickname: string, email: string })
-        : Promise<Response<undefined>> {
-        // sync validation
-        const validation = valid.userCreateSchema.safeParse(params);
-        if (!validation.success) {
-            return { success: false, message: validation.error.errors[0]?.message };
-        }
-
-        const { nickname, email } = validation.data;
-
-        // async operations and business logic
-        try {
-            //Check existance
-            const existingAuthor = await this.prisma.author.findFirst({
-                where: {
-                    OR: [
-                        { nickname: nickname },
-                        { email: email },
-                    ]
-                },
-                select: {
-                    nickname: true,
-                    email: true,
-                }
-            });
-
-            if (existingAuthor && existingAuthor.email === email) {
-                return {
-                    success: false,
-                    message: `The email "${email}" is already in use.`
-                }
-            } else if (existingAuthor && existingAuthor.nickname === nickname) {
-                return {
-                    success: false,
-                    message: `The nickname "${nickname}" is already taken`,
-                }
-            }
-            // Insert user
-            await this.prisma.author.create({
-                data: {
-                    nickname: nickname, // Nickname of the author (visible for users)
-                    email: email,
-                }
-            });
-
-            return { success: true, message: "Author registered successfully" }
-        } catch (err) {
-            logger.error((err as Error).stack);
-            return { success: false, message: (err as Error).message }
-        }
-    }
-
-    async addPost(params: { title: string, content: string, published: boolean, authorId: number })
+    async addPost(params: { title: string, content: string, published: boolean })
         : Promise<Response<{ postId: number }>> {
         // Sync validation        
         const validation = valid.postUploadSchema.safeParse(params);
@@ -136,7 +83,6 @@ export default class Client {
                 select: {
                     id: true,
                     title: true,
-                    author: { select: { nickname: true } },
                     tags: { select: { tag: true } },
                     createdAt: true,
                 },
