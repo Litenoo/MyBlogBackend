@@ -1,10 +1,10 @@
 import { PrismaClient, Prisma } from "@prisma/client";
 import type { Post } from "@prisma/client"
-import * as valid from "./prismaClient.schema";
+import * as valid from "./dbClient.schema";
 
 import logger from "../logger";
 
-interface Response<T> {
+export interface Response<T> {
     success: boolean,
     message?: string,
     payload?: T,
@@ -16,19 +16,34 @@ type PostCard = Prisma.PostGetPayload<{
         id: true,
         title: true,
         createdAt: true,
-        tags: { select: { tag: true } }         // Only tag name
+        tags: { select: { tag: true } } // Only tag name
     }
 }>;
 
+export interface AddPostParams {
+    title: string;
+    content: string;
+    published?: boolean;
+}
+
 export default class Client {
-    protected prisma = new PrismaClient();
+    protected prisma: PrismaClient;
+
+    constructor(prisma: PrismaClient = new PrismaClient()) {
+        this.prisma = prisma;
+    }
 
     public get prismaClient() { // Only for testing
         return this.prisma;
     }
 
-    async addPost(params: { title: string, content: string, published: boolean })
-        : Promise<Response<{ postId: number }>> {
+    async addPost(params: { title: string, content: string, published?: boolean, })
+        : Promise<Response<{ post: Post }>> {
+        // Sadly can't be done with auto assignment (equality sign in params)
+        if (params.published === undefined) {
+            params.published = false;
+        }
+
         // Sync validation        
         const validation = valid.postUploadSchema.safeParse(params);
         if (!validation.success) {
@@ -37,33 +52,27 @@ export default class Client {
 
         try {
             // Database query
-            const post = await this.prisma.post.create({
+            const post: Post = await this.prisma.post.create({
                 data: validation.data,
             });
 
-            return { success: true, payload: { postId: post.id } };
+            return { success: true, payload: { post } };
         } catch (err) {
             logger.error((err as Error).stack);
-
-            const prismaError = err as Prisma.PrismaClientKnownRequestError;
-            if (prismaError.code === "P2003") { // Foreign key does not exists, the only Foreign key is author
-                return { success: false, message: "Author does not exist" };
-            }
-
             return { success: false, message: "Unexpected error occured" };
         }
     }
 
-    async getPostById(params: { postId: number })
-        : Promise<Response<Post | null>> {
+    async getPostById(postId: number)
+        : Promise<Response<{ post: Post | null }>> {
         try {
-            const payload = await this.prisma.post.findUnique({
+            const post: Post | null = await this.prisma.post.findUnique({
                 where: {
-                    id: params.postId,
+                    id: postId,
                 }
             });
 
-            return { success: true, payload: payload }
+            return { success: true, payload: { post: post } }
         } catch (err) {
             logger.error((err as Error).stack);
             return { success: false, message: "Unexpected error occured" };
