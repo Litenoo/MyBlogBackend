@@ -1,10 +1,10 @@
 import { PrismaClient, Prisma } from "@prisma/client";
-import type { Post, Author } from "@prisma/client"
-import * as valid from "./prismaClient.schema";
+import type { Post } from "@prisma/client"
+import * as valid from "./dbClient.schema";
 
 import logger from "../logger";
 
-interface Response<T> {
+export interface Response<T> {
     success: boolean,
     message?: string,
     payload?: T,
@@ -16,72 +16,34 @@ type PostCard = Prisma.PostGetPayload<{
         id: true,
         title: true,
         createdAt: true,
-        author: { select: { nickname: true } }  // Only author's nickname
-        tags: { select: { tag: true } }         // Only tag name
+        tags: { select: { tag: true } } // Only tag name
     }
 }>;
 
+export interface AddPostParams {
+    title: string;
+    content: string;
+    published?: boolean;
+}
+
 export default class Client {
-    protected prisma = new PrismaClient();
+    protected prisma: PrismaClient;
+
+    constructor(prisma: PrismaClient = new PrismaClient()) {
+        this.prisma = prisma;
+    }
 
     public get prismaClient() { // Only for testing
         return this.prisma;
     }
 
-    async addAuthor(params: { nickname: string, email: string })
-        : Promise<Response<undefined>> {
-        // sync validation
-        const validation = valid.userCreateSchema.safeParse(params);
-        if (!validation.success) {
-            return { success: false, message: validation.error.errors[0]?.message };
+    async addPost(params: { title: string, content: string, published?: boolean, })
+        : Promise<Response<{ post: Post }>> {
+        // Sadly can't be done with auto assignment (equality sign in params)
+        if (params.published === undefined) {
+            params.published = false;
         }
 
-        const { nickname, email } = validation.data;
-
-        // async operations and business logic
-        try {
-            //Check existance
-            const existingAuthor = await this.prisma.author.findFirst({
-                where: {
-                    OR: [
-                        { nickname: nickname },
-                        { email: email },
-                    ]
-                },
-                select: {
-                    nickname: true,
-                    email: true,
-                }
-            });
-
-            if (existingAuthor && existingAuthor.email === email) {
-                return {
-                    success: false,
-                    message: `The email "${email}" is already in use.`
-                }
-            } else if (existingAuthor && existingAuthor.nickname === nickname) {
-                return {
-                    success: false,
-                    message: `The nickname "${nickname}" is already taken`,
-                }
-            }
-            // Insert user
-            await this.prisma.author.create({
-                data: {
-                    nickname: nickname, // Nickname of the author (visible for users)
-                    email: email,
-                }
-            });
-
-            return { success: true, message: "Author registered successfully" }
-        } catch (err) {
-            logger.error((err as Error).stack);
-            return { success: false, message: (err as Error).message }
-        }
-    }
-
-    async addPost(params: { title: string, content: string, published: boolean, authorId: number })
-        : Promise<Response<{ postId: number }>> {
         // Sync validation        
         const validation = valid.postUploadSchema.safeParse(params);
         if (!validation.success) {
@@ -90,33 +52,27 @@ export default class Client {
 
         try {
             // Database query
-            const post = await this.prisma.post.create({
+            const post: Post = await this.prisma.post.create({
                 data: validation.data,
             });
 
-            return { success: true, payload: { postId: post.id } };
+            return { success: true, payload: { post } };
         } catch (err) {
             logger.error((err as Error).stack);
-
-            const prismaError = err as Prisma.PrismaClientKnownRequestError;
-            if (prismaError.code === "P2003") { // Foreign key does not exists, the only Foreign key is author
-                return { success: false, message: "Author does not exist" };
-            }
-
             return { success: false, message: "Unexpected error occured" };
         }
     }
 
-    async getPostById(params: { postId: number })
-        : Promise<Response<Post | null>> {
+    async getPostById(postId: number)
+        : Promise<Response<{ post: Post | null }>> {
         try {
-            const payload = await this.prisma.post.findUnique({
+            const post: Post | null = await this.prisma.post.findUnique({
                 where: {
-                    id: params.postId,
+                    id: postId,
                 }
             });
 
-            return { success: true, payload: payload }
+            return { success: true, payload: { post: post } }
         } catch (err) {
             logger.error((err as Error).stack);
             return { success: false, message: "Unexpected error occured" };
@@ -136,7 +92,6 @@ export default class Client {
                 select: {
                     id: true,
                     title: true,
-                    author: { select: { nickname: true } },
                     tags: { select: { tag: true } },
                     createdAt: true,
                 },
