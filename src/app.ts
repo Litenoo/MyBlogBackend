@@ -1,5 +1,5 @@
-import DbClient from "@src/subServices/dbClitent";
-import HttpClient from "@src/subServices/httpClient";
+import DbClient from "./subServices/databaseService";
+import HttpClient from "./subServices/httpService";
 
 export default class App {
     protected prismaClient: DbClient | null = null;

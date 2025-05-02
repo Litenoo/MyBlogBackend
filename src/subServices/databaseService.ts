@@ -1,6 +1,6 @@
 import { PrismaClient, Prisma } from "@prisma/client";
-import type { Post } from "@prisma/client"
-import * as valid from "./dbClient.schema";
+import type { Post, PostTag } from "@prisma/client"
+import * as valid from "./databaseService.schema";
 
 import logger from "../logger";
 
@@ -37,7 +37,7 @@ export default class Client {
         return this.prisma;
     }
 
-    async addPost(params: { title: string, content: string, published?: boolean, })
+    async insertPost(params: { title: string, content: string, published?: boolean, tags?: string[] }) //make tags work properly
         : Promise<Response<{ post: Post }>> {
         // Sadly can't be done with auto assignment (equality sign in params)
         if (params.published === undefined) {
@@ -51,9 +51,21 @@ export default class Client {
         }
 
         try {
+            const { title, content, published, tags } = validation.data;
             // Database query
             const post: Post = await this.prisma.post.create({
-                data: validation.data,
+                data: {
+                    title,
+                    content,
+                    published,
+                    tags: {
+                        connectOrCreate: tags?.map(tag => ({
+                            where: { tag },
+                            create: { tag },
+                        })),
+                    }
+                },
+                include: { tags: true },
             });
 
             return { success: true, payload: { post } };
@@ -63,12 +75,49 @@ export default class Client {
         }
     }
 
-    async getPostById(postId: number)
+    async insertTag(params: { tag: string }): Promise<Response<{ tag: PostTag }>> {
+        const validation = valid.tagUploadSchema.safeParse(params);
+        if (!validation.success) {
+            return { success: false, message: validation.error.errors[0]?.message }
+        }
+        try {
+            const tag: PostTag = await this.prisma.postTag.create({
+                data: validation.data, //DEV returns posts that are having the same tag. Including unpublished ones.
+            });
+            return { success: true, payload: { tag } }
+        } catch (err) {
+            logger.error((err as Error).stack);
+            return { success: false, message: "Unexpected error occured" }
+        }
+    }
+
+    async searchTags(params: { searchString: string }): Promise<Response<PostTag[]>> {
+        const validation = valid.tagSearchSchema.safeParse(params);
+        if (!validation.success) {
+            return { success: false, message: validation.error.errors[0]?.message };
+        }
+        try {
+            const tags: PostTag[] = await this.prisma.postTag.findMany({
+                where: {
+                    tag: {
+                        contains: params.searchString,
+                        mode: "insensitive"
+                    }
+                }
+            });
+            return { success: true, payload: tags };
+        } catch (err) {
+            logger.error((err as Error).stack);
+            return { success: false, message: "Unexpected error occured" };
+        }
+    }
+
+    async getPostById(params: { postId: number })
         : Promise<Response<{ post: Post | null }>> {
         try {
             const post: Post | null = await this.prisma.post.findUnique({
                 where: {
-                    id: postId,
+                    id: params.postId,
                 }
             });
 
@@ -79,7 +128,9 @@ export default class Client {
         }
     }
 
-    async getPostsTitleCards(params: { quantity: number, requirements: {} }) {
+    //This function is made for searchBar, which does suggest posts and tags related to posts to make searching easier
+    async getPostSnippets(params: { quantity: number, tags: string[], keyword: string })
+        : Promise<Response<{ postTags: PostTag[], postCards: PostCard[] }>> {
         // Sync validation
         const validation = valid.postsTitleCardsSchema.safeParse(params);
         if (!validation.success) {
@@ -87,7 +138,10 @@ export default class Client {
         }
 
         try {
-            // Request
+            // Requests
+            const keyword = params.keyword;
+            const postTags: PostTag[] = (await this.searchTags({ searchString: keyword })).payload ?? [];
+
             const postCards: PostCard[] = await this.prisma.post.findMany({
                 select: {
                     id: true,
@@ -95,10 +149,19 @@ export default class Client {
                     tags: { select: { tag: true } },
                     createdAt: true,
                 },
-                where: { published: true },
-                orderBy: { createdAt: 'desc' },
+                where: { //DEV if tag is not provided it does not include posts that does not have a tag assigned at all
+                    published: true,
+                    tags: {
+                        some: {
+                            tag: {
+                                contains: params.keyword,
+                                mode: "insensitive",
+                            }
+                        }
+                    }
+                },
             });
-            return { success: true, payload: postCards }
+            return { success: true, payload: { postCards, postTags } }
         } catch (err) {
             logger.error((err as Error).stack);
             return { success: false, message: "Unexpected error occured" }

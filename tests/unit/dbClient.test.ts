@@ -1,5 +1,5 @@
 import { describe, expect, test, vi, beforeEach } from 'vitest';
-import { PrismaClient, Post, Prisma } from "@prisma/client";
+import { PrismaClient, Post, PostTag, Prisma } from "@prisma/client";
 import DbClient from "../../src/subServices/dbClitent";
 import { Response } from "../../src/subServices/dbClitent"
 
@@ -8,7 +8,7 @@ import { Response } from "../../src/subServices/dbClitent"
 // of database service which does not run during the unit tests.
 // **/
 
-describe("dbClient.createPost", async () => {
+describe("dbClient.insertPost", async () => {
     let dbClient: DbClient;
     let idN = 1;
 
@@ -33,7 +33,7 @@ describe("dbClient.createPost", async () => {
             title: "Some title",
             content: "Lorem ipsum dolor amet",
         }
-        const response: Response<{ post: Post }> = await dbClient.addPost(post);
+        const response: Response<{ post: Post }> = await dbClient.insertPost(post);
         expect(response.success).toBe(true);
         expect(response.payload).toBeDefined();
         expect(response.payload?.post).toMatchObject(post); // check if matches passed object
@@ -48,15 +48,46 @@ describe("dbClient.createPost", async () => {
             title: "a", //single letter, when the requirement is 2
             content: "Lorem ipsum dolor amet",
         }
-        const response: Response<{ post: Post }> = await dbClient.addPost(post);
+        const response: Response<{ post: Post }> = await dbClient.insertPost(post);
         expect(response.success).toBe(false);
         expect(response.message).toBe("Title must be at least 2 characters");
     });
-
-
 });
 
-describe("dbClient.getPostById", () => {
+
+describe("dbClient.insertTag", async () => {
+    let dbClient: DbClient;
+    const prismaMock = {
+        postTag: {
+            create: vi.fn().mockResolvedValue({
+                id: 1,
+                tag: "TagTitle",
+                createdAt: new Date(),
+
+            }),
+        }
+    }
+    beforeEach(() => {
+        dbClient = new DbClient(prismaMock as unknown as PrismaClient);
+    });
+
+    test("should return insert tag if data is valid", async () => {
+        const title = "TagTitle";
+        const response: Response<{ tag: PostTag }> = await dbClient.insertTag({ tag: title });
+        expect(response.success).toBe(true);
+        expect(response.payload?.tag.tag).toBe(title);
+    });
+
+    test("should not return insert tag data if is not valid", async () => {
+        const title = "SomeHorrendouslyLongStringThatIsNotValid";
+        const response: Response<{ tag: PostTag }> = await dbClient.insertTag({ tag: title });
+        expect(response.success).toBe(false);
+        expect(response.message).toBe("Title is too long. Maximum lenght is 32");
+        expect(response.payload).toBeUndefined();
+    });
+});
+
+describe("dbClient.getPostById", () => { // DEV rewrite to handle tags as well
     let dbClient: DbClient;
     const prismaMock = { post: { findUnique: vi.fn() } } // being setup for every test independently
 
