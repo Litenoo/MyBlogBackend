@@ -21,7 +21,7 @@ export const tagSearchSchema = z.object({
     searchString: z.string()
         .min(1, "No searchString passed")
         .max(32, "SearchString is too long. Maximum length is 32")
-})
+}).strict();
 
 export const postsTitleCardsSchema = z.object({
     quantity: z.number()
@@ -30,6 +30,7 @@ export const postsTitleCardsSchema = z.object({
         .max(100, "Maximum quantity of posts to load is 100"),
     tags: z.array(z.string()).optional(),
     keyword: z.string()
-        .max(128, "Search query cannot be longer than 12 characters")
+        .max(128, "Search query cannot be longer than 128 characters")
+        .optional()
         .default(""),
 }).strict();

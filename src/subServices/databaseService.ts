@@ -1,4 +1,4 @@
-import { PrismaClient, Prisma } from "@prisma/client";
+import { PrismaClient, Prisma } from "../../prisma/generated/client";
 import type { Post, PostTag } from "@prisma/client"
 import * as valid from "./databaseService.schema";
 
@@ -149,16 +149,16 @@ export default class Client {
                     tags: { select: { tag: true } },
                     createdAt: true,
                 },
-                where: { //DEV if tag is not provided it does not include posts that does not have a tag assigned at all
+                where: {
                     published: true,
-                    tags: {
+                    tags: params.tags?.length > 0 ? {
                         some: {
                             tag: {
-                                contains: params.keyword,
+                                contains: validation.data.keyword,
                                 mode: "insensitive",
                             }
                         }
-                    }
+                    } : undefined,
                 },
             });
             return { success: true, payload: { postCards, postTags } }
@@ -167,39 +167,4 @@ export default class Client {
             return { success: false, message: "Unexpected error occured" }
         }
     }
-
-    // REFACTOR THOSE
-
-    // async getCardsByTag(tags: string[]) {
-    //     return this.prisma.post.findMany({
-    //         where: { tags: { some: { tag: { in: tags, } } } }
-    //     }) || null;
-    // }
-
-    // async searchForPost(query: string) {
-    //     const tags = await this.prisma.postTag.findMany({
-    //         where: {
-    //             tag: { contains: query, mode: 'insensitive' }
-    //         }
-    //     });
-
-    //     const posts = await this.prisma.post.findMany({
-    //         where: {
-    //             title: { contains: query, mode: 'insensitive' }
-    //         }
-    //     });
-    //     return [...tags, ...posts];
-    // }
-
-    // async getAllPostsCards() { //edit to send only neccessary info
-    //     return await this.prisma.post.findMany();
-    // }
-
-    // async disconnect() {
-    //     try {
-    //         await this.prisma.$disconnect();
-    //     } catch (err) {
-    //         logger.error((err as Error).stack);
-    //     }
-    // }
 }

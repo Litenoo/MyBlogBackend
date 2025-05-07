@@ -30,15 +30,13 @@ type SearchPostsAndTagsTemplate = {
     quantity: number,
 }
 
-const PORT = 3001; // DEV
-
 export default class HttpClient {
     protected api;
     protected databaseService: PrsmClient;
 
-    constructor(prismaClient: PrsmClient) {
+    constructor(databaseService: PrsmClient) {
 
-        this.databaseService = prismaClient;
+        this.databaseService = databaseService;
 
         this.api = express();
         this.api.use(express.json());
@@ -118,20 +116,11 @@ export default class HttpClient {
                 res.status(500).json(createReponse(false, "Internal server error"));
             }
         });
+    }
 
-        // Replace that with selecting a couple of posts
-
-        // this.api.post("/api/getPostCards", async (req, res) => {
-        //     try {
-        //         const postsCards = this.prismaClient.getAllPostsCards();
-        //     } catch (err) {
-        //         logger.error(new Error((err as Error).message).stack);
-        //         res.status(500).json(createReponse(false, "Internal server error"));
-        //     }
-        // });
-
-        this.api.listen(PORT, () => {
-            console.log(`Server running on port ${PORT}`);
+    listen(port: number): void {
+        this.api.listen(port, () => {
+            console.log(`HttpService is running on port ${port}`)
         });
     }
 }

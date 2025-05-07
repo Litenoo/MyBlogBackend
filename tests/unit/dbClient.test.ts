@@ -1,7 +1,7 @@
 import { describe, expect, test, vi, beforeEach } from 'vitest';
 import { PrismaClient, Post, PostTag, Prisma } from "@prisma/client";
-import DbClient from "../../src/subServices/dbClitent";
-import { Response } from "../../src/subServices/dbClitent"
+import DbClient from "../../src/subServices/databaseService";
+import { Response } from "../../src/subServices/databaseService"
 
 
 //**Mocking the database is needed because in the build returned value is the result
@@ -108,7 +108,7 @@ describe("dbClient.getPostById", () => { // DEV rewrite to handle tags as well
         prismaMock.post.findUnique.mockResolvedValue(mockPost);
 
         //Test
-        const response = await dbClient.getPostById(id);
+        const response = await dbClient.getPostById({ postId: id });
         expect(response.success).toBe(true);
         expect(response.payload).toBeDefined();
 
@@ -133,7 +133,7 @@ describe("dbClient.getPostById", () => { // DEV rewrite to handle tags as well
         prismaMock.post.findUnique.mockResolvedValue(mockPost);
 
         //Test
-        const response = await dbClient.getPostById(999); // not exisiting id
+        const response = await dbClient.getPostById({ postId: 999 }); // not exisiting id
         expect(response.success).toBe(true);
         expect(response.payload).toBeDefined();
 

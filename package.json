@@ -22,15 +22,19 @@
     "@types/express": "^5.0.1",
     "@types/jest": "^29.5.14",
     "@types/source-map-support": "^0.5.10",
+    "@types/supertest": "^6.0.3",
     "@types/winston": "^2.4.4",
     "dotenv": "^16.5.0",
     "dotenv-cli": "^8.0.0",
+    "supertest": "^7.1.0",
     "typescript": "^5.8.3",
     "vitest": "^3.1.2"
   },
   "scripts": {
     "generate": "yarn prisma generate",
     "dev": "tsc && node ./dist/index.js",
-    "test": "vitest"
+    "test": "vitest",
+    "test:unit":"vitest run tests/unit",
+    "test:integration": "TEST_SCOPE=integration vitest run tests/integration"
   }
 }
