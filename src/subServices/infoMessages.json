@@ -1,0 +1,10 @@
+{
+    "success":{
+        "POST_INSERT": "Post inserted succesfully",
+        "POST_PUBLISH": "Post published succesfully"
+    },
+    "failure":{
+        "INTERNAL_SERVER_ERROR": "Internal server error",
+        "INCORRECT_POST_ID" : "Incorrect post id"
+    }
+}

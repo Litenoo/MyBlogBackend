@@ -1,30 +1,11 @@
-import { PrismaClient, Prisma } from "../../prisma/generated/client";
-import type { Post, PostTag } from "@prisma/client"
-import * as valid from "./databaseService.schema";
+import { PrismaClient } from "../../prisma/generated/client";
+import type { Post, PostTag } from "@prisma/client";
 
 import logger from "../logger";
 
-export interface Response<T> {
-    success: boolean,
-    message?: string,
-    payload?: T,
-}
-
-// Type for card of post (For example searchbar results : only title and important things)
-type PostCard = Prisma.PostGetPayload<{
-    select: {
-        id: true,
-        title: true,
-        createdAt: true,
-        tags: { select: { tag: true } } // Only tag name
-    }
-}>;
-
-export interface AddPostParams {
-    title: string;
-    content: string;
-    published?: boolean;
-}
+//external schemas file
+import * as s from "./services.schama";
+import msg from "./infoMessages.json";
 
 export default class Client {
     protected prisma: PrismaClient;
@@ -38,14 +19,14 @@ export default class Client {
     }
 
     async insertPost(params: { title: string, content: string, published?: boolean, tags?: string[] }) //make tags work properly
-        : Promise<Response<{ post: Post }>> {
-        // Sadly can't be done with auto assignment (equality sign in params)
+        : Promise<s.Response<{ post: Post }>> {
+
         if (params.published === undefined) {
             params.published = false;
         }
 
         // Sync validation        
-        const validation = valid.postUploadSchema.safeParse(params);
+        const validation = s.postUploadSchema.safeParse(params);
         if (!validation.success) {
             return { success: false, message: validation.error.errors[0]?.message }
         }
@@ -68,15 +49,79 @@ export default class Client {
                 include: { tags: true },
             });
 
-            return { success: true, payload: { post } };
+            return { success: true, message: msg.success.POST_INSERT, payload: { post } };
         } catch (err) {
             logger.error((err as Error).stack);
-            return { success: false, message: "Unexpected error occured" };
+            return { success: false, message: msg.failure.INTERNAL_SERVER_ERROR };
         }
     }
 
-    async insertTag(params: { tag: string }): Promise<Response<{ tag: PostTag }>> {
-        const validation = valid.tagUploadSchema.safeParse(params);
+    // async publishPost(params: { postId: number }): Promise<s.Response<{ post: Post | null }>> {
+    //     try {
+    //         const post: Post | null = await this.prisma.post.update({
+    //             where: { id: params.postId },
+    //             data: { published: true },
+    //         });
+
+    //         if (!post) {
+    //             return { success: false, message: "" };
+    //         }
+
+    //         return { success: true, payload: { post } }
+    //     } catch (err) {
+    //         logger.error((err as Error).stack);
+    //         return { success: false, message: msg.failure.INTERNAL_SERVER_ERROR };
+    //     }
+    // }
+
+    // The above publishPost method can be simplified by using editPost function. GH #6 Issue
+    async editPost(params: { postId: number, data: s.EditPostParams }): Promise<s.Response<{ post: Post | null }>> {
+        try {
+            const post: Post | null = await this.prisma.post.findUnique({
+                where: {
+                    id: params.postId,
+                }
+            });
+
+            if (!post) {
+                return { success: false, message: msg.failure.INCORRECT_POST_ID };
+            }
+
+            const mergedPost = { ...post, ...params.data };
+
+
+            const validation = s.postEditSchema.safeParse(mergedPost);
+            if (!validation.success) {
+                return { success: false, message: validation.error.errors[0]?.message } //Dev i think that if failure it will still be 200, check it
+            }
+
+            const { title, content, published, tags } = validation.data;
+
+            const updatedPost: Post | null = await this.prisma.post.update({
+                where: { id: params.postId },
+                data: {
+                    title, content, published, tags: {
+                        set: [],
+                        connectOrCreate: tags?.map(tag => ({
+                            where: { tag },
+                            create: { tag },
+                        })),
+                    }
+                },
+                include: {
+                    tags: true,
+                }
+            });
+
+            return { success: true, message: msg.success.POST_PUBLISH, payload: { post: updatedPost } }
+        } catch (err) {
+            logger.error((err as Error).stack);
+            return { success: false, message: msg.failure.INTERNAL_SERVER_ERROR };
+        }
+    }
+
+    async insertTag(params: { tag: string }): Promise<s.Response<{ tag: PostTag }>> {
+        const validation = s.tagUploadSchema.safeParse(params);
         if (!validation.success) {
             return { success: false, message: validation.error.errors[0]?.message }
         }
@@ -87,12 +132,12 @@ export default class Client {
             return { success: true, payload: { tag } }
         } catch (err) {
             logger.error((err as Error).stack);
-            return { success: false, message: "Unexpected error occured" }
+            return { success: false, message: msg.failure.INTERNAL_SERVER_ERROR }
         }
     }
 
-    async searchTags(params: { searchString: string }): Promise<Response<PostTag[]>> {
-        const validation = valid.tagSearchSchema.safeParse(params);
+    async searchTags(params: { searchString: string }): Promise<s.Response<PostTag[]>> {
+        const validation = s.tagSearchSchema.safeParse(params);
         if (!validation.success) {
             return { success: false, message: validation.error.errors[0]?.message };
         }
@@ -108,31 +153,39 @@ export default class Client {
             return { success: true, payload: tags };
         } catch (err) {
             logger.error((err as Error).stack);
-            return { success: false, message: "Unexpected error occured" };
+            return { success: false, message: msg.failure.INTERNAL_SERVER_ERROR };
         }
     }
 
     async getPostById(params: { postId: number })
-        : Promise<Response<{ post: Post | null }>> {
+        : Promise<s.Response<{ post: Post | null }>> {
         try {
             const post: Post | null = await this.prisma.post.findUnique({
                 where: {
                     id: params.postId,
+                    published: true,
+                },
+                include: {
+                    tags: true,
                 }
             });
+
+            if (!post) {
+                return { success: false, message: "No post with given id" };
+            }
 
             return { success: true, payload: { post: post } }
         } catch (err) {
             logger.error((err as Error).stack);
-            return { success: false, message: "Unexpected error occured" };
+            return { success: false, message: msg.failure.INTERNAL_SERVER_ERROR };
         }
     }
 
     //This function is made for searchBar, which does suggest posts and tags related to posts to make searching easier
     async getPostSnippets(params: { quantity: number, tags: string[], keyword: string })
-        : Promise<Response<{ postTags: PostTag[], postCards: PostCard[] }>> {
+        : Promise<s.Response<{ postTags: PostTag[], postCards: s.PostCard[] }>> {
         // Sync validation
-        const validation = valid.postsTitleCardsSchema.safeParse(params);
+        const validation = s.postsTitleCardsSchema.safeParse(params);
         if (!validation.success) {
             return { success: false, message: validation.error.errors[0]?.message }
         }
@@ -142,7 +195,7 @@ export default class Client {
             const keyword = params.keyword;
             const postTags: PostTag[] = (await this.searchTags({ searchString: keyword })).payload ?? [];
 
-            const postCards: PostCard[] = await this.prisma.post.findMany({
+            const postCards: s.PostCard[] = await this.prisma.post.findMany({
                 select: {
                     id: true,
                     title: true,
@@ -164,7 +217,7 @@ export default class Client {
             return { success: true, payload: { postCards, postTags } }
         } catch (err) {
             logger.error((err as Error).stack);
-            return { success: false, message: "Unexpected error occured" }
+            return { success: false, message: msg.failure.INTERNAL_SERVER_ERROR }
         }
     }
 }
