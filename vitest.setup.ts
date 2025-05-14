@@ -1,7 +1,8 @@
+// vitest.setup.ts
 import { config } from 'dotenv';
 import { execSync } from 'child_process';
 
-config({ path: '.env.test' });
+config({ path: '.env.integration' });
 
 if (process.env.TEST_SCOPE === 'integration') {
     execSync('npx prisma db push --force-reset', {
@@ -12,3 +13,4 @@ if (process.env.TEST_SCOPE === 'integration') {
         },
     });
 }
+//This code runs every single test file but couldn't

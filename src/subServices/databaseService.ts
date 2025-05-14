@@ -56,25 +56,6 @@ export default class Client {
         }
     }
 
-    // async publishPost(params: { postId: number }): Promise<s.Response<{ post: Post | null }>> {
-    //     try {
-    //         const post: Post | null = await this.prisma.post.update({
-    //             where: { id: params.postId },
-    //             data: { published: true },
-    //         });
-
-    //         if (!post) {
-    //             return { success: false, message: "" };
-    //         }
-
-    //         return { success: true, payload: { post } }
-    //     } catch (err) {
-    //         logger.error((err as Error).stack);
-    //         return { success: false, message: msg.failure.INTERNAL_SERVER_ERROR };
-    //     }
-    // }
-
-    // The above publishPost method can be simplified by using editPost function. GH #6 Issue
     async editPost(params: { postId: number, data: s.EditPostParams }): Promise<s.Response<{ post: Post | null }>> {
         try {
             const post: Post | null = await this.prisma.post.findUnique({
