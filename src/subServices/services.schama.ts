@@ -37,7 +37,7 @@ export const tagSearchSchema = z.object({
 }).strict();
 
 export const postsTitleCardsSchema = z.object({
-    quantity: z.number()
+    quantity: z.number({ required_error: "Quantity value is needeed." })
         .int("Invalid quantity of post cards")
         .positive("Invalid quantity of post cards")
         .max(100, "Maximum quantity of posts to load is 100"),

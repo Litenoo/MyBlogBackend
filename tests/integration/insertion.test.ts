@@ -3,14 +3,18 @@ import { PrismaClient, Post, PostTag, Prisma } from "@prisma/client";
 
 import App from "../../src/app";
 import supertest from 'supertest';
+import { execSync } from 'child_process';
 
 describe(`Insertion`, () => {
 	let prisma: PrismaClient;
 	let app: App;
 
-	beforeAll(() => {
+	beforeAll(async () => {
 		prisma = new PrismaClient();
 		app = new App(Number(process.env.TEST_PORT));
+		await execSync("npx prisma db push --force-reset", {
+			stdio: "inherit"
+		});
 	});
 
 	beforeEach(() => {
@@ -31,7 +35,7 @@ describe(`Insertion`, () => {
 		const insert = await supertest(app.httpService?.api)
 			.post("/api/insertPost")
 			.send({
-				title: "Test post",
+				title: "Test post 1",
 				content: "Lorem ipsum dolor amet",
 				published: false,
 				tags: ["test", "typescript"],
@@ -58,7 +62,7 @@ describe(`Insertion`, () => {
 			.get("/api/getPostById/1");
 
 		expect(result2.status).toBe(200);
-		expect(result2.body?.payload.post.title).toBe("Test post");
+		expect(result2.body?.payload.post.published).toBe(true);
 	});
 
 	test("Post is avalaiable to insert and then edit", async () => {
@@ -68,7 +72,7 @@ describe(`Insertion`, () => {
 			.send({
 				title: "Test post",
 				content: "Lorem ipsum dolor amet",
-				published: true, //Dev
+				published: true,
 				tags: ["test", "typescript"],
 			})
 			.set('Accept', 'application/json');

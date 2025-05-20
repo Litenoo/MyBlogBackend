@@ -21,10 +21,6 @@ export default class Client {
     async insertPost(params: { title: string, content: string, published?: boolean, tags?: string[] }) //make tags work properly
         : Promise<s.Response<{ post: Post }>> {
 
-        if (params.published === undefined) {
-            params.published = false;
-        }
-
         // Sync validation        
         const validation = s.postUploadSchema.safeParse(params);
         if (!validation.success) {
@@ -151,6 +147,7 @@ export default class Client {
                 }
             });
 
+
             if (!post) {
                 return { success: false, message: "No post with given id" };
             }
@@ -163,7 +160,7 @@ export default class Client {
     }
 
     //This function is made for searchBar, which does suggest posts and tags related to posts to make searching easier
-    async getPostSnippets(params: { quantity: number, tags: string[], keyword: string })
+    async multiSearch(params: { quantity: number, tags: string[], keyword: string })
         : Promise<s.Response<{ postTags: PostTag[], postCards: s.PostCard[] }>> {
         // Sync validation
         const validation = s.postsTitleCardsSchema.safeParse(params);
@@ -173,9 +170,9 @@ export default class Client {
 
         try {
             // Requests
-            const keyword = params.keyword;
-            const postTags: PostTag[] = (await this.searchTags({ searchString: keyword })).payload ?? [];
+            console.log(`multiSearch method, keyword: ${validation.data.keyword}, tag : ${validation.data.tags}`);
 
+            const postTags: PostTag[] = (await this.searchTags({ searchString: validation.data.keyword })).payload ?? [];
             const postCards: s.PostCard[] = await this.prisma.post.findMany({
                 select: {
                     id: true,
@@ -185,15 +182,19 @@ export default class Client {
                 },
                 where: {
                     published: true,
+                    title: {
+                        contains: validation.data.keyword,
+                        mode: "insensitive",
+                    },
                     tags: params.tags?.length > 0 ? {
                         some: {
                             tag: {
-                                contains: validation.data.keyword,
-                                mode: "insensitive",
+                                in: validation.data.tags,
                             }
                         }
                     } : undefined,
                 },
+                take: validation.data.quantity,
             });
             return { success: true, payload: { postCards, postTags } }
         } catch (err) {

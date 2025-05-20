@@ -86,7 +86,7 @@ export default class HttpClient {
 		this._api.post("/api/search/multiSearch", async (req, res) => {
 			try {
 				const { quantity, tags, keyword }: s.SearchPostsAndTagsTemplate = req.body.criteria;
-				const response = await this.databaseService.getPostSnippets({ quantity, tags, keyword });
+				const response = await this.databaseService.multiSearch({ quantity, tags, keyword });
 				if (!response.success) {
 					res.status(400).json(createReponse(false, response.message, response.payload));
 					return;
